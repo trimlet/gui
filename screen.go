@@ -11,20 +11,21 @@ import (
 
 // Keys that the window forwards to the app (printable characters arrive as runes).
 const (
-	KeyUp        = "up"
-	KeyDown      = "down"
-	KeyLeft      = "left"
-	KeyRight     = "right"
-	KeyEnter     = "enter"
-	KeyEsc       = "esc"
-	KeyBackspace = "backspace"
-	KeyPageUp    = "pageup"
-	KeyPageDown  = "pagedown"
-	KeyHome      = "home"
-	KeyEnd       = "end"
-	KeyTab       = "tab"
-	KeyShiftTab  = "shifttab"
-	KeyOther     = "other"
+	KeyUp         = "up"
+	KeyDown       = "down"
+	KeyLeft       = "left"
+	KeyRight      = "right"
+	KeyEnter      = "enter"
+	KeyEsc        = "esc"
+	KeyBackspace  = "backspace"
+	KeyPageUp     = "pageup"
+	KeyPageDown   = "pagedown"
+	KeyHome       = "home"
+	KeyEnd        = "end"
+	KeyTab        = "tab"
+	KeyShiftTab   = "shifttab"
+	KeyShiftEnter = "shiftenter"
+	KeyOther      = "other"
 )
 
 // FullScreenKey is the key shown in the hints to switch full screen on and off.
@@ -41,6 +42,14 @@ type ConsoleApp interface {
 	Render(cols, rows int) []Line
 }
 
+// Selecter is a ConsoleApp that copies a mouse selection its own way, e.g. without the line breaks
+// it added to fit the window or the marks before its lines (Trimlet Chat). The selection goes from
+// (fromRow, fromCol) to (toRow, toCol), both included, in the lines given by Render (column 0 is the
+// first character of a line, after the console's margin).
+type Selecter interface {
+	SelectedText(fromRow, fromCol, toRow, toCol int) string
+}
+
 // Screen connects a ConsoleApp to a window: keys, mouse selection, clipboard and drawing.
 type Screen struct {
 	con *Console
@@ -55,7 +64,12 @@ func NewScreen(a fyne.App, w fyne.Window, app ConsoleApp) *Screen {
 		s.Redraw()
 	}
 	copySelection := func() {
-		if text := s.con.SelectedText(); text != "" {
+		text := s.con.SelectedText()
+		if sel, ok := app.(Selecter); ok && text != "" {
+			from, to := s.con.selectionRange()
+			text = sel.SelectedText(from.row-1, from.col-s.con.Margin, to.row-1, to.col-s.con.Margin)
+		}
+		if text != "" {
 			a.Clipboard().SetContent(text)
 		}
 	}
@@ -83,7 +97,11 @@ func NewScreen(a fyne.App, w fyne.Window, app ConsoleApp) *Screen {
 		case fyne.KeyRight:
 			app.Key(KeyRight)
 		case fyne.KeyReturn, fyne.KeyEnter:
-			app.Key(KeyEnter)
+			if s.con.shift {
+				app.Key(KeyShiftEnter)
+			} else {
+				app.Key(KeyEnter)
+			}
 		case fyne.KeyEscape:
 			app.Key(KeyEsc)
 		case fyne.KeyBackspace:
