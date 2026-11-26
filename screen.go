@@ -25,6 +25,8 @@ const (
 	KeyTab        = "tab"
 	KeyShiftTab   = "shifttab"
 	KeyShiftEnter = "shiftenter"
+	KeyShiftUp    = "shiftup"
+	KeyShiftDown  = "shiftdown"
 	KeyOther      = "other"
 )
 
@@ -89,9 +91,17 @@ func NewScreen(a fyne.App, w fyne.Window, app ConsoleApp) *Screen {
 		s.con.ClearSelection()
 		switch e.Name {
 		case fyne.KeyUp:
-			app.Key(KeyUp)
+			if s.con.shift {
+				app.Key(KeyShiftUp)
+			} else {
+				app.Key(KeyUp)
+			}
 		case fyne.KeyDown:
-			app.Key(KeyDown)
+			if s.con.shift {
+				app.Key(KeyShiftDown)
+			} else {
+				app.Key(KeyDown)
+			}
 		case fyne.KeyLeft:
 			app.Key(KeyLeft)
 		case fyne.KeyRight:
